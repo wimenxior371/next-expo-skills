@@ -1,6 +1,6 @@
 ---
 name: next-expo-project-structure
-description: Structure and organize a large Next.js or Expo project — where components, features, hooks, lib, types, constants, and routes live. Use when scaffolding a new app, reorganizing a growing codebase, or deciding where a new file should go.
+description: Organize a Next.js or Expo app by feature, with clear boundaries for routes, UI, shared data access, and infrastructure. Use when scaffolding an app, reorganizing a growing codebase, or deciding where code belongs.
 ---
 
 # next-expo-project-structure
@@ -17,12 +17,7 @@ Do **not** over-apply this to small apps. Start simple and add structure as the 
 
 ## Core philosophy
 
-> Keep route-level code in `app`, shared code in `components`, business logic in `lib`, and feature-specific logic inside feature folders.
-
-The one question that decides every placement:
-
-- **Reused everywhere → global folder** (`components/`, `hooks/`, `lib/`, `types/`).
-- **Belongs to one feature → that feature's folder** (`features/<name>/…`).
+Keep route composition in `app/`, feature behavior with its owner, and generic infrastructure in shared modules. If several features need the same data, expose a focused data module they can use independently.
 
 ## The `app/` directory is flexible
 
@@ -110,6 +105,15 @@ Database clients, SDK setup, auth helpers, generic utilities. **No feature-speci
 ### `hooks/`, `types/`, `constants/`, `styles/`
 Global-only. Feature-specific hooks/types belong in the feature (e.g. `features/billing/hooks/useSubscription.ts`). Keep global type files small; push domain types into features to avoid monolithic files.
 
+## When features share data access
+
+Keep data access inside its owning feature while the scope is local. If several features need the same records and would otherwise import another feature's screen code, expose a UI-independent module such as `domains/orders/`. Follow the equivalent boundary when the project already has one.
+
+- Keep requests, transport types, and response mapping in plain modules. Put client query and mutation hooks in a separate module so Next.js Server Components and non-React callers can use request functions directly. Give server-only code its own entry point.
+- Let feature hooks combine the data with forms, navigation, and screen state. For a layered app, dependencies flow from routes and features toward data and infrastructure. Compose peer screens at the route or layout, and keep data modules free of imports from feature UI.
+- When TanStack Query is already in use, reuse a query key factory for reads and invalidation. Include filters and IDs that affect the result. Refresh the affected keys after a successful mutation in the data integration, so screens can consume query state directly.
+- When testing a change across layers, check requests and response mapping with a controlled transport. Exercise screen behavior with a controlled data dependency.
+
 ## Naming conventions
 
 Names should say what the thing does:
@@ -154,7 +158,7 @@ Once the structure is in place, defer framework specifics to the dedicated skill
 
 1. **Detect the framework and app-directory convention.** Check for `app.json`/`expo` deps (Expo) vs `next` dep (Next.js), and whether routes live under `src/app` or root `app`. Match what exists.
 2. **Set `ROOT`** to `src/` or the repo root accordingly, and confirm the `@/*` path alias resolves to it.
-3. **Create the sibling folders** (`components/{ui,layout,shared}`, `features/`, `hooks/`, `lib/`, `types/`, `constants/`, `styles/`) next to `app/`.
-4. **Place each file by the global-vs-feature test.** Reused everywhere → global folder; belongs to one feature → `features/<name>/`.
+3. **Add sibling folders as needed.** Use the reference layout and the app's existing conventions.
+4. **Place each file by ownership.** Keep feature-specific code in `features/<name>/`, generic building blocks in shared folders, and data reused across features behind a focused interface.
 5. **Keep `app/` routes thin** — they compose features, not implement them.
 6. **Hand off** framework specifics to the related skills above.
